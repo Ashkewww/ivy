@@ -1,12 +1,13 @@
 import os
 import sqlite3
 
+
 from langchain_core.messages import SystemMessage
 from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.sqlite import SqliteSaver
 
-from state import IvyState
+from utils.state import IvyState
 from utils.llm import LLM
 from utils.persona import IVY_PERSONA
 from utils.tools import TOOLS

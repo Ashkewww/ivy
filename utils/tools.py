@@ -84,6 +84,7 @@ def _load_notes() -> list[str]:
 def save_note(text: str) -> str:
     """Save a short note for the user. Use when they ask you to remember,
     note down, or jot something."""
+    
     notes = _load_notes()
     notes.append(text)
     NOTES_FILE.write_text(json.dumps(notes, indent=2), encoding="utf-8")
