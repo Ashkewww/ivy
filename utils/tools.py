@@ -8,8 +8,6 @@ from zoneinfo import ZoneInfo
 
 from langchain_core.tools import tool
 
-from utils.db import sqlite_connection
-
 NOTES_FILE = Path("notes.json")
 
 WEATHER_CODES = {
@@ -99,6 +97,7 @@ def list_notes() -> str:
 
 
 def remember(memory: str) -> str:
+    #TODO: Save something to be remembered across conversations
     pass
 
 
