@@ -28,8 +28,6 @@ def _get_json(url: str) -> dict:
         return json.load(resp)
 
 
-# NOTE: the docstring is NOT just documentation. The model reads it to decide
-# when to call the tool, so write it for the model.
 @tool
 def get_current_time() -> str:
     """Get the current date and time. Use this whenever the user asks what
@@ -98,6 +96,14 @@ def list_notes() -> str:
     if not notes:
         return "There are no saved notes."
     return "\n".join(f"{i}. {n}" for i, n in enumerate(notes, 1))
+
+
+def remember(memory: str) -> str:
+    pass
+
+
+def recall(faintMemory: str) -> list[str]:
+    return []
 
 
 TOOLS = [
