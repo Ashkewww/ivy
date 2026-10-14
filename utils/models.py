@@ -4,20 +4,22 @@ from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain_openai import ChatOpenAI
 from langchain_azure_ai.embeddings import AzureAIOpenAIApiEmbeddingsModel
 
+from utils.credentials import Credentials
+
 
 token_provider = get_bearer_token_provider(
-    DefaultAzureCredential(), "https://ai.azure.com/.default"
+    Credentials.AZURE_IDENTITY, "https://ai.azure.com/.default"
 )
 
 EMBEDDINGS = AzureAIOpenAIApiEmbeddingsModel(
-    project_endpoint=os.environ["FOUNDRY_PROJECT"],
+    project_endpoint=Credentials.FOUNDRY_PROJECT,
     credential=DefaultAzureCredential(),
-    model=os.environ["EMBEDDING_MODEL"],
+    model=Credentials.EMBEDDING_MODEL,
 )
 
 
 LLM = ChatOpenAI(
-    base_url=os.environ["FOUNDRY_ENDPOINT"],
+    base_url=Credentials.FOUNDRY_ENDPOINT,
     api_key=token_provider,
-    model=os.environ["MODEL_DEPLOYMENT_NAME"],
+    model=Credentials.MODEL_DEPLOYMENT_NAME,
 )

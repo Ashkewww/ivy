@@ -8,6 +8,8 @@ from zoneinfo import ZoneInfo
 
 from langchain_core.tools import tool
 
+from utils.credentials import Credentials
+
 NOTES_FILE = Path("notes.json")
 
 WEATHER_CODES = {
@@ -30,7 +32,7 @@ def _get_json(url: str) -> dict:
 def get_current_time() -> str:
     """Get the current date and time. Use this whenever the user asks what
     time it is, what day it is, or what today's date is."""
-    tz_name = os.environ.get("IVY_TIMEZONE")  # e.g. "Asia/Kolkata"
+    tz_name = Credentials.IVY_TIMEZONE 
     now = datetime.now(
         ZoneInfo(tz_name)) if tz_name else datetime.now().astimezone()
     return now.strftime("%A, %d %B %Y, %I:%M %p")
@@ -40,7 +42,7 @@ def get_current_time() -> str:
 def get_weather(city: str | None = None) -> str:
     """Get the current weather for a city. If the user doesn't name a city,
     leave city empty and their home city will be used."""
-    city = city or os.environ.get("IVY_HOME_CITY")
+    city = city or Credentials.IVY_HOME_CITY
     if not city:
         return "No city was given and no home city is set. Ask the user which city."
     try:
