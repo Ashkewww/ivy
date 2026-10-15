@@ -1,5 +1,7 @@
 import json
 import os
+from uuid import uuid4
+from typing_extensions import Annotated
 import urllib.parse
 import urllib.request
 from datetime import datetime
@@ -7,10 +9,11 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from langchain_core.tools import tool
+from langgraph.store.base import BaseStore
+from langgraph.prebuilt import InjectedState, InjectedStore
 
 from utils.credentials import Credentials
-
-NOTES_FILE = Path("notes.json")
+from utils.datamodels import IvyState, Memory, Note
 
 WEATHER_CODES = {
     0: "clear sky", 1: "mostly clear", 2: "partly cloudy", 3: "overcast",
@@ -23,11 +26,13 @@ WEATHER_CODES = {
 }
 
 
+# ---------- Helper Functions ---------- #
 def _get_json(url: str) -> dict:
     with urllib.request.urlopen(url, timeout=10) as resp:
         return json.load(resp)
 
 
+# --------- Tools ---------- #
 @tool
 def get_current_time() -> str:
     """Get the current date and time. Use this whenever the user asks what
@@ -71,40 +76,81 @@ def get_weather(city: str | None = None) -> str:
     except Exception as e:  # return errors as text so the model can react to them
         return f"Weather lookup failed: {e}"
 
-
-def _load_notes() -> list[str]:
-    if NOTES_FILE.exists():
-        return json.loads(NOTES_FILE.read_text(encoding="utf-8"))
-    return []
-
-
 @tool
-def save_note(text: str) -> str:
+async def save_note(text: str, store: Annotated[BaseStore, InjectedStore()], state: Annotated[IvyState, InjectedState()]) -> str:
     """Save a short note for the user. Use when they ask you to remember,
     note down, or jot something."""
-    
-    notes = _load_notes()
-    notes.append(text)
-    NOTES_FILE.write_text(json.dumps(notes, indent=2), encoding="utf-8")
+    id = str(uuid4())
+    now = datetime.now().isoformat()
+    await store.aput(
+        ("notes", state["person"]),
+        id,
+        {
+            "id:": id,
+            "user_id": state["person"],
+            "content": text,
+            "created_at": now,
+            "updated_at": now
+        },
+    )
     return "Saved."
 
 
 @tool
-def list_notes() -> str:
-    """Read back all of the user's saved notes."""
-    notes = _load_notes()
-    if not notes:
-        return "There are no saved notes."
-    return "\n".join(f"{i}. {n}" for i, n in enumerate(notes, 1))
+async def list_notes(num_of_notes: int, store: Annotated[BaseStore, InjectedStore()], state: Annotated[IvyState, InjectedState()], id = None) -> list[Note] | str:
+    '''Read the notes that have been saved for the user. Use when they ask you to list, show, or read their notes.
+    
+    Parameters:
+    - num_of_notes: The number of notes to retrieve. If there are fewer notes than this number, return all available notes.
+    - id: Optional. If provided, retrieve the note with this specific ID. If not provided, retrieve the most recent notes up to num_of_notes.
+    '''
+    if not id:
+        notes: list[Note] = [Note(**note.value) for note in await store.asearch(("notes", state["person"]), limit=num_of_notes)]
+        if not notes:
+            return "You have no saved notes."
+        return notes
+    else:
+        note = await store.aget(("notes", state["person"]), id)
+        if note:
+            return Note(**note.value)
+        else:
+            return f"No note found with ID: {id}"
+    
 
+@tool
+async def remember(memory: str, store: Annotated[BaseStore, InjectedStore()], state: Annotated[IvyState, InjectedState()]) -> str:
+    '''Store a memory for the user. Use when they ask you to remember something for later. Or use it when they something about themselves. Use this to remember their preferences and who they are'''
+    if memory:
+        id = str(uuid4())
+        await store.aput(
+            ("memories", state["person"]),
+            id,
+            {
+                "id": id,
+                "content": memory,
+                "datetime": datetime.now().isoformat(),
+                "source": "User",
+                "category": "Intentional",
+            },
+            index=["content"],
+        )
+        return f"Memory saved. With the ID {id}. You can recall it later."
+    else:
+        return "No memory provided to remember."
+        
 
-def remember(memory: str) -> str:
-    #TODO: Save something to be remembered across conversations
-    pass
-
-
-def recall(faintMemory: str) -> list[str]:
-    return []
+@tool
+async def recall(faintMemory: str, store: Annotated[BaseStore, InjectedStore()], state: Annotated[IvyState, InjectedState()]) -> list[str]:
+    '''Recall memories that match the given faint memory. Use when the user asks you to recall something they told you before.'''
+    if faintMemory:
+        memories = await store.asearch(("memories", state["person"]), query=faintMemory, limit=5)
+        if memories:
+            return [Memory(**item.value) for item in memories]
+        else:
+            return "No matching memories found."
+    else:
+        return "No faint memory provided to recall."
+    
 
 
 TOOLS = [
@@ -112,4 +158,6 @@ TOOLS = [
     get_weather,
     save_note,
     list_notes,
+    remember,
+    recall
 ]
