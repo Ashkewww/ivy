@@ -136,7 +136,7 @@ async def fetch_summary(state: IvyState, runtime: Runtime):
     return {"summary": ""}
         
     
-def ivy_node(state: IvyState, runtime: Runtime):
+async def ivy_node(state: IvyState, runtime: Runtime):
     system = SystemMessage(content=IVY_PERSONA.format(person=state["person"]))
     
     memories = state.get("relevant_memories", [])
@@ -150,8 +150,9 @@ def ivy_node(state: IvyState, runtime: Runtime):
     summary = state.get("summary")
     if summary:
         system.content += f"\n\nHere is a summary of the conversation before the messages cut off:\n{summary}"
-    print("System Message Content:\n", system.content)
-    response = llm_with_tools.invoke([system] + state["messages"])
+
+    response = await llm_with_tools.ainvoke([system] + state["messages"])
+    
     return {"messages": [response]}
 
     
